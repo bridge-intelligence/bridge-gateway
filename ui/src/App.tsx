@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/authStore';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoginPage from './pages/LoginPage';
+import AuthCallback from './pages/AuthCallback';
 import DashboardPage from './pages/DashboardPage';
 import RoutesPage from './pages/RoutesPage';
 import PluginsPage from './pages/PluginsPage';
@@ -22,6 +23,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             element={
               <ProtectedRoute>

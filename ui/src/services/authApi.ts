@@ -17,4 +17,12 @@ export const authApi = {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((r) => r.data),
+
+  getSocialAuthUrl: (provider: string, redirectUri?: string): string => {
+    const base = `${runtimeConfig.bridgeIdApiUrl}/api/v1/auth/social/${provider}`;
+    if (redirectUri) {
+      return `${base}?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    }
+    return base;
+  },
 };

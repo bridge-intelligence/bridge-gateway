@@ -10,9 +10,11 @@ import {
   InlineNotification,
   Loading,
 } from '@carbon/react';
-import { Login } from '@carbon/icons-react';
+import { Login, UserOnline } from '@carbon/icons-react';
 import { authApi } from '../services/authApi';
 import { useAuthStore } from '../stores/authStore';
+
+const GATEWAY_CALLBACK_PATH = '/auth/callback';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,6 +23,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleLogin = () => {
+    const callbackUrl = `${window.location.origin}${GATEWAY_CALLBACK_PATH}`;
+    window.location.href = authApi.getSocialAuthUrl('google', callbackUrl);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +61,19 @@ export default function LoginPage() {
               style={{ marginBottom: '1rem' }}
             />
           )}
+          <Button
+            kind="tertiary"
+            renderIcon={UserOnline}
+            onClick={handleGoogleLogin}
+            style={{ width: '100%', marginBottom: '1rem' }}
+          >
+            Sign in with Google
+          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '1rem 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#393939' }} />
+            <span style={{ padding: '0 1rem', fontSize: '0.75rem', color: '#6f6f6f' }}>or</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#393939' }} />
+          </div>
           <form onSubmit={handleSubmit}>
             <TextInput
               id="email"
