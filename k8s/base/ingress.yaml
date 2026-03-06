@@ -3,6 +3,9 @@ kind: Ingress
 metadata:
   name: bridge-gateway
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
@@ -13,6 +16,11 @@ metadata:
     nginx.ingress.kubernetes.io/enable-cors: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - gateway.service.d.bridgeintelligence.ltd
+        - api.gateway.service.d.bridgeintelligence.ltd
+      secretName: bridge-gateway-tls
   rules:
     - host: gateway.service.d.bridgeintelligence.ltd
       http:

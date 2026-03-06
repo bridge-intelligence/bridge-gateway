@@ -31,10 +31,14 @@ spring:
             allowCredentials: true
             maxAge: 3600
       routes:
+        # ── Specific /api/v1/{service}/** routes FIRST (lower order = higher priority) ──
         - id: custody-api
           uri: ${CUSTODY_BASE_URL:http://bridge-custody-api:8081}
           predicates:
             - Path=/api/v1/custody/**
+          metadata:
+            response-timeout: 15000
+          order: 1
           filters:
             - name: CircuitBreaker
               args:
@@ -51,7 +55,8 @@ spring:
         - id: identity-api
           uri: ${IDENTITY_BASE_URL:http://bridge-id:8080}
           predicates:
-            - Path=/api/v1/identity/**
+            - Path=/api/v1/identity/**,/api/v1/register,/api/v1/login,/api/v1/refresh,/api/v1/auth/**
+          order: 2
           filters:
             - name: CircuitBreaker
               args:
@@ -69,6 +74,7 @@ spring:
           uri: ${LICENSING_BASE_URL:http://bridge-licensing:8080}
           predicates:
             - Path=/api/v1/licensing/**
+          order: 3
           filters:
             - name: CircuitBreaker
               args:
@@ -78,15 +84,28 @@ spring:
           uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
           predicates:
             - Path=/api/v1/brokerage/**
+          order: 4
           filters:
             - name: CircuitBreaker
               args:
                 name: brokerage
                 fallbackUri: forward:/fallback/brokerage
+        - id: wallet-api
+          uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+          predicates:
+            - Path=/api/v1/wallet/**
+          order: 5
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: wallet
+                fallbackUri: forward:/fallback/wallet
+        # ── Native /v1/* routes for business services ──
         - id: portfolio-api
           uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
           predicates:
             - Path=/v1/portfolio/**,/v1/transactions/**,/v1/prices/**
+          order: 10
           filters:
             - name: CircuitBreaker
               args:
@@ -104,6 +123,7 @@ spring:
           uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
           predicates:
             - Path=/v1/orders/**
+          order: 11
           filters:
             - name: CircuitBreaker
               args:
@@ -121,6 +141,7 @@ spring:
           uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
           predicates:
             - Path=/v1/market/**
+          order: 12
           filters:
             - name: CircuitBreaker
               args:
@@ -138,6 +159,7 @@ spring:
           uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
           predicates:
             - Path=/v1/ledger/**
+          order: 13
           filters:
             - name: CircuitBreaker
               args:
@@ -151,10 +173,12 @@ spring:
                   firstBackoff: 100ms
                   maxBackoff: 1000ms
                   factor: 2
+        # ── Catch-all orchestra route LAST (highest order number) ──
         - id: orchestra-api
           uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
           predicates:
             - Path=/api/v1/**
+          order: 100
           filters:
             - name: CircuitBreaker
               args:
@@ -241,17 +265,11 @@ gateway:
     allow-credentials: true
 
   routes:
-    orchestra:
-      enabled: true
-      path: /api/v1/**
-      uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
-      strip-prefix: 0
-      plugins:
-        - audit
     custody:
       enabled: true
       path: /api/v1/custody/**
       uri: ${CUSTODY_BASE_URL:http://bridge-custody-api:8081}
+      order: 1
       strip-prefix: 0
       plugins:
         - audit
@@ -260,6 +278,7 @@ gateway:
       enabled: true
       path: /api/v1/identity/**
       uri: ${IDENTITY_BASE_URL:http://bridge-id:8080}
+      order: 2
       strip-prefix: 0
       plugins:
         - audit
@@ -267,6 +286,7 @@ gateway:
       enabled: true
       path: /api/v1/licensing/**
       uri: ${LICENSING_BASE_URL:http://bridge-licensing:8080}
+      order: 3
       strip-prefix: 0
       plugins:
         - audit
@@ -274,6 +294,7 @@ gateway:
       enabled: ${BROKERAGE_ENABLED:false}
       path: /api/v1/brokerage/**
       uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
+      order: 4
       strip-prefix: 0
       plugins:
         - audit
@@ -282,6 +303,7 @@ gateway:
       enabled: true
       path: /api/v1/wallet/**
       uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+      order: 5
       strip-prefix: 0
       plugins:
         - audit
@@ -289,6 +311,7 @@ gateway:
       enabled: true
       path: /v1/portfolio/**
       uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
+      order: 10
       strip-prefix: 0
       plugins:
         - audit
@@ -296,6 +319,7 @@ gateway:
       enabled: true
       path: /v1/orders/**
       uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
+      order: 11
       strip-prefix: 0
       plugins:
         - audit
@@ -303,6 +327,7 @@ gateway:
       enabled: true
       path: /v1/market/**
       uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
+      order: 12
       strip-prefix: 0
       plugins:
         - audit
@@ -310,6 +335,15 @@ gateway:
       enabled: true
       path: /v1/ledger/**
       uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
+      order: 13
+      strip-prefix: 0
+      plugins:
+        - audit
+    orchestra:
+      enabled: true
+      path: /api/v1/**
+      uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
+      order: 100
       strip-prefix: 0
       plugins:
         - audit
@@ -375,6 +409,8 @@ resilience4j:
       marketdata:
         base-config: default
       ledger:
+        base-config: default
+      wallet:
         base-config: default
   timelimiter:
     configs:

@@ -21,6 +21,7 @@ data class RouteDefinition(
     val path: String = "",
     val uri: String = "",
     val stripPrefix: Int = 0,
+    val order: Int = 0,
     val methods: List<String> = emptyList(),
     val plugins: List<String> = emptyList()
 )
@@ -37,7 +38,8 @@ class GatewayRoutesConfig(
     fun customRouteLocator(builder: RouteLocatorBuilder): RouteLocator {
         val routeBuilder = builder.routes()
 
-        routesProperties.routes.forEach { (routeId, definition) ->
+        // Sort routes by order so specific paths (lower order) register before catch-all
+        routesProperties.routes.entries.sortedBy { it.value.order }.forEach { (routeId, definition) ->
             if (!definition.enabled) {
                 logger.info("Route '{}' is disabled, skipping registration", routeId)
                 return@forEach
@@ -49,13 +51,13 @@ class GatewayRoutesConfig(
             }
 
             logger.info(
-                "Registering route '{}': path={}, uri={}, stripPrefix={}, methods={}, plugins={}",
-                routeId, definition.path, definition.uri, definition.stripPrefix,
+                "Registering route '{}': path={}, uri={}, order={}, stripPrefix={}, methods={}, plugins={}",
+                routeId, definition.path, definition.order, definition.uri, definition.stripPrefix,
                 definition.methods, definition.plugins
             )
 
             routeBuilder.route(routeId) { predicateSpec ->
-                var predicate = predicateSpec.path(definition.path)
+                var predicate = predicateSpec.order(definition.order).path(definition.path)
 
                 if (definition.methods.isNotEmpty()) {
                     val httpMethods = definition.methods.map { HttpMethod.valueOf(it.uppercase()) }
