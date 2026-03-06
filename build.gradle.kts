@@ -42,6 +42,9 @@ dependencies {
     // Security (auth filters)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
+    // JWT validation (JWKS + RS256)
+    implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
+
     // Circuit breaker (Resilience4j)
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
 

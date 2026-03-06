@@ -18,9 +18,13 @@ class SecurityConfig {
             .formLogin { it.disable() }
             .authorizeExchange { exchanges ->
                 exchanges
+                    // Public infrastructure endpoints
                     .pathMatchers("/actuator/health", "/actuator/info", "/actuator/health/**").permitAll()
                     .pathMatchers("/actuator/prometheus").permitAll()
                     .pathMatchers("/fallback/**").permitAll()
+                    // Auth is enforced by JwtValidationFilter (GlobalFilter),
+                    // not by Spring Security — so permit all at this layer.
+                    // The JWT filter handles 401 responses for unauthenticated requests.
                     .pathMatchers("/gateway/admin/**").permitAll()
                     .anyExchange().permitAll()
             }

@@ -83,6 +83,74 @@ spring:
               args:
                 name: brokerage
                 fallbackUri: forward:/fallback/brokerage
+        - id: portfolio-api
+          uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
+          predicates:
+            - Path=/v1/portfolio/**,/v1/transactions/**,/v1/prices/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: portfolio
+                fallbackUri: forward:/fallback/portfolio
+            - name: Retry
+              args:
+                retries: 2
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 1000ms
+                  factor: 2
+        - id: execution-api
+          uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
+          predicates:
+            - Path=/v1/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: execution
+                fallbackUri: forward:/fallback/execution
+            - name: Retry
+              args:
+                retries: 2
+                methods: GET
+                backoff:
+                  firstBackoff: 200ms
+                  maxBackoff: 2000ms
+                  factor: 2
+        - id: marketdata-api
+          uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
+          predicates:
+            - Path=/v1/market/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: marketdata
+                fallbackUri: forward:/fallback/marketdata
+            - name: Retry
+              args:
+                retries: 2
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 1000ms
+                  factor: 2
+        - id: ledger-api
+          uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
+          predicates:
+            - Path=/v1/ledger/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ledger
+                fallbackUri: forward:/fallback/ledger
+            - name: Retry
+              args:
+                retries: 2
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 1000ms
+                  factor: 2
         - id: orchestra-api
           uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
           predicates:
@@ -126,6 +194,26 @@ gateway:
   auth:
     api-keys: ${GATEWAY_API_KEYS:}
     header-name: X-API-Key
+    jwt:
+      enabled: ${JWT_AUTH_ENABLED:true}
+      jwks-url: ${BRIDGE_ID_JWKS_URL:http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks}
+      issuer: ${BRIDGE_ID_JWT_ISSUER:http://bridge-id:8083}
+      cache-refresh-seconds: 300
+      public-paths:
+        - /actuator/**
+        - /fallback/**
+        - /.well-known/**
+        - /jwks
+        - /api/v1/register
+        - /api/v1/login
+        - /api/v1/refresh
+        - /api/v1/auth/**
+        - /api/v1/identity/register
+        - /api/v1/identity/login
+        - /api/v1/identity/refresh
+        - /api/v1/identity/auth/**
+        - /api/v1/authorize
+        - /api/v1/token
 
   security:
     max-request-size: 10485760
@@ -197,6 +285,34 @@ gateway:
       strip-prefix: 0
       plugins:
         - audit
+    portfolio:
+      enabled: true
+      path: /v1/portfolio/**
+      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
+      strip-prefix: 0
+      plugins:
+        - audit
+    execution:
+      enabled: true
+      path: /v1/orders/**
+      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
+      strip-prefix: 0
+      plugins:
+        - audit
+    marketdata:
+      enabled: true
+      path: /v1/market/**
+      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
+      strip-prefix: 0
+      plugins:
+        - audit
+    ledger:
+      enabled: true
+      path: /v1/ledger/**
+      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
+      strip-prefix: 0
+      plugins:
+        - audit
 
   plugins:
     configs:
@@ -252,6 +368,14 @@ resilience4j:
         base-config: default
         failure-rate-threshold: 40
         wait-duration-in-open-state: 45s
+      portfolio:
+        base-config: default
+      execution:
+        base-config: default
+      marketdata:
+        base-config: default
+      ledger:
+        base-config: default
   timelimiter:
     configs:
       default:
