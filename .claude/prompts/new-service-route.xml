@@ -1,0 +1,16 @@
+<prompt name="new-service-route">
+  <description>Add a new service route to the gateway</description>
+  <parameters>
+    <param name="path_prefix" required="true">URL path prefix (e.g., /v1/portfolio)</param>
+    <param name="target_service" required="true">Backend service name</param>
+    <param name="auth_type" required="true">Authentication type (jwt, api_key, both, none)</param>
+    <param name="timeout_seconds" required="false" default="30">Request timeout</param>
+  </parameters>
+  <steps>
+    <step>Add route definition in GatewayRoutesConfig</step>
+    <step>Configure authentication filter for the route</step>
+    <step>Set timeout and circuit breaker policy</step>
+    <step>Add integration test for the new route</step>
+    <step>Update this CLAUDE.md route map in Section 17</step>
+  </steps>
+</prompt>

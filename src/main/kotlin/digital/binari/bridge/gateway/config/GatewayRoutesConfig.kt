@@ -66,12 +66,15 @@ class GatewayRoutesConfig(
 
             logger.info(
                 "Registering route '{}': path={}, uri={}, order={}, stripPrefix={}, methods={}, plugins={}",
-                routeId, definition.path, definition.order, definition.uri, definition.stripPrefix,
+                routeId, definition.path, definition.uri, definition.order, definition.stripPrefix,
                 definition.methods, definition.plugins
             )
 
+            // Split comma-separated path patterns for Spring path() varargs
+            val pathPatterns = definition.path.split(",").map { it.trim() }.toTypedArray()
+
             routeBuilder.route(routeId) { predicateSpec ->
-                var predicate = predicateSpec.order(definition.order).path(definition.path)
+                var predicate = predicateSpec.order(definition.order).path(*pathPatterns)
 
                 if (definition.methods.isNotEmpty()) {
                     val httpMethods = definition.methods.map { HttpMethod.valueOf(it.uppercase()) }

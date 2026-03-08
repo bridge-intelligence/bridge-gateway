@@ -107,6 +107,7 @@ gateway:
     allow-credentials: true
 
   routes:
+    # ── Services that natively use /api/v1/* (no path rewrite needed) ──
     custody:
       enabled: true
       path: /api/v1/custody/**
@@ -127,60 +128,72 @@ gateway:
     licensing:
       enabled: true
       path: /api/v1/licensing/**
-      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8082}
+      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8086}
       order: 3
       strip-prefix: 0
       plugins:
         - audit
-    # brokerage: uncomment when bridge-brokerage service is deployed
-    #   enabled: ${BROKERAGE_ENABLED:false}
-    #   path: /api/v1/brokerage/**
-    #   uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
-    #   order: 4
-    #   strip-prefix: 0
-    #   plugins:
-    #     - audit
-    #     - monetization
-    # wallet: uncomment when bridge-wallet service is deployed
-    #   enabled: true
-    #   path: /api/v1/wallet/**
-    #   uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
-    #   order: 5
-    #   strip-prefix: 0
-    #   plugins:
-    #     - audit
+    brokerage:
+      enabled: ${BROKERAGE_ENABLED:false}
+      path: /api/v1/brokerage/**
+      uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
+      order: 4
+      strip-prefix: 0
+      plugins:
+        - audit
+        - monetization
+    wallet:
+      enabled: true
+      path: /api/v1/wallet/**
+      uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+      order: 5
+      strip-prefix: 0
+      plugins:
+        - audit
+
+    # ── Business services: exposed at /api/v1/*, strip /api → forward /v1/* ──
     portfolio:
       enabled: true
-      path: /v1/portfolio/**,/v1/transactions/**,/v1/prices/**
-      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8080}
+      path: /api/v1/portfolio/**,/api/v1/transactions/**,/api/v1/prices/**
+      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
       order: 10
-      strip-prefix: 0
+      strip-prefix: 1
       plugins:
         - audit
     execution:
       enabled: true
-      path: /v1/orders/**
-      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8080}
+      path: /api/v1/orders/**
+      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
       order: 11
-      strip-prefix: 0
+      strip-prefix: 1
       plugins:
         - audit
     marketdata:
       enabled: true
-      path: /v1/market/**
-      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8080}
+      path: /api/v1/market/**
+      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
       order: 12
-      strip-prefix: 0
+      strip-prefix: 1
       plugins:
         - audit
     ledger:
       enabled: true
-      path: /v1/accounts/**,/v1/postings/**,/v1/holds/**
-      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8080}
+      path: /api/v1/accounts/**,/api/v1/postings/**,/api/v1/holds/**
+      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
       order: 13
-      strip-prefix: 0
+      strip-prefix: 1
       plugins:
         - audit
+    recon:
+      enabled: ${RECON_ENABLED:false}
+      path: /api/v1/recon/**
+      uri: ${RECON_BASE_URL:http://bridge-recon-service:8087}
+      order: 14
+      strip-prefix: 1
+      plugins:
+        - audit
+
+    # ── Orchestra catch-all (lowest priority) ──
     orchestra:
       enabled: true
       path: /api/v1/**
