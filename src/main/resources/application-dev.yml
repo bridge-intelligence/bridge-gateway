@@ -4,7 +4,18 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
+            # S-6: Do NOT use wildcard "*" with allowCredentials: true.
+            # Explicit localhost origins for dev profile only.
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:5173"
+              - "http://localhost:5174"
+              - "http://localhost:8080"
+              - "http://127.0.0.1:3000"
+              - "http://127.0.0.1:5173"
+              - "http://127.0.0.1:5174"
+            allowedMethods: "*"
+            allowedHeaders: "*"
             allowCredentials: true
 
 gateway:
@@ -16,8 +27,8 @@ gateway:
       uri: http://bridge-orchestra-api.bridge-service-stack.svc.cluster.local:8080
     custody:
       uri: http://bridge-custody-api.bridge-service-stack.svc.cluster.local:8081
-    wallet:
-      uri: http://bridge-wallet.bridge-service-stack.svc.cluster.local:8080
+    # wallet: uncomment when bridge-wallet service is deployed
+    #   uri: http://bridge-wallet.bridge-service-stack.svc.cluster.local:8080
 
 logging:
   level:

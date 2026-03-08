@@ -34,6 +34,50 @@ class CircuitBreakerFallbackController {
         )
     )
 
+    @GetMapping("/portfolio")
+    fun portfolioFallback(): Mono<Map<String, Any>> = Mono.just(
+        mapOf(
+            "error" to "SERVICE_UNAVAILABLE",
+            "message" to "Portfolio service is temporarily unavailable. Please retry shortly.",
+            "service" to "bridge-portfolio-service",
+            "timestamp" to Instant.now().toString(),
+            "retryAfter" to 30
+        )
+    )
+
+    @GetMapping("/execution")
+    fun executionFallback(): Mono<Map<String, Any>> = Mono.just(
+        mapOf(
+            "error" to "SERVICE_UNAVAILABLE",
+            "message" to "Execution service is temporarily unavailable. Please retry shortly.",
+            "service" to "bridge-execution-service",
+            "timestamp" to Instant.now().toString(),
+            "retryAfter" to 30
+        )
+    )
+
+    @GetMapping("/marketdata")
+    fun marketdataFallback(): Mono<Map<String, Any>> = Mono.just(
+        mapOf(
+            "error" to "SERVICE_UNAVAILABLE",
+            "message" to "Market data service is temporarily unavailable. Please retry shortly.",
+            "service" to "bridge-marketdata-service",
+            "timestamp" to Instant.now().toString(),
+            "retryAfter" to 30
+        )
+    )
+
+    @GetMapping("/ledger")
+    fun ledgerFallback(): Mono<Map<String, Any>> = Mono.just(
+        mapOf(
+            "error" to "SERVICE_UNAVAILABLE",
+            "message" to "Ledger service is temporarily unavailable. Please retry shortly.",
+            "service" to "bridge-ledger-service",
+            "timestamp" to Instant.now().toString(),
+            "retryAfter" to 30
+        )
+    )
+
     @GetMapping("/default")
     fun defaultFallback(): Mono<Map<String, Any>> = Mono.just(
         mapOf(
