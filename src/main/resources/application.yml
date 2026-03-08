@@ -30,76 +30,10 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
             maxAge: 3600
-      routes:
-        - id: custody-api
-          uri: ${CUSTODY_BASE_URL:http://bridge-custody-api:8081}
-          predicates:
-            - Path=/api/v1/custody/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: custody
-                fallbackUri: forward:/fallback/custody
-            - name: Retry
-              args:
-                retries: 2
-                methods: GET
-                backoff:
-                  firstBackoff: 200ms
-                  maxBackoff: 2000ms
-                  factor: 2
-        - id: identity-api
-          uri: ${IDENTITY_BASE_URL:http://bridge-id:8080}
-          predicates:
-            - Path=/api/v1/identity/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: identity
-                fallbackUri: forward:/fallback/identity
-            - name: Retry
-              args:
-                retries: 2
-                methods: GET
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 1000ms
-                  factor: 2
-        - id: licensing-api
-          uri: ${LICENSING_BASE_URL:http://bridge-licensing:8080}
-          predicates:
-            - Path=/api/v1/licensing/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: licensing
-                fallbackUri: forward:/fallback/licensing
-        - id: brokerage-api
-          uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
-          predicates:
-            - Path=/api/v1/brokerage/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: brokerage
-                fallbackUri: forward:/fallback/brokerage
-        - id: orchestra-api
-          uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
-          predicates:
-            - Path=/api/v1/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: orchestra
-                fallbackUri: forward:/fallback/orchestra
-            - name: Retry
-              args:
-                retries: 3
-                methods: GET
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 1000ms
-                  factor: 2
+      # ── IMPORTANT: Route registration uses ONLY the custom gateway.routes section below ──
+      # ── (via GatewayRoutesConfig programmatic RouteLocator). Do NOT add spring.cloud.gateway.routes ──
+      # ── here to avoid dual registration. CircuitBreaker/Retry/RateLimit filters are applied ──
+      # ── programmatically in GatewayRoutesConfig. ──
 
 management:
   endpoints:
@@ -126,6 +60,26 @@ gateway:
   auth:
     api-keys: ${GATEWAY_API_KEYS:}
     header-name: X-API-Key
+    jwt:
+      enabled: ${JWT_AUTH_ENABLED:true}
+      jwks-url: ${BRIDGE_ID_JWKS_URL:http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks}
+      issuer: ${BRIDGE_ID_JWT_ISSUER:http://bridge-id:8083}
+      cache-refresh-seconds: 300
+      public-paths:
+        - /actuator/**
+        - /fallback/**
+        - /.well-known/**
+        - /jwks
+        - /api/v1/register
+        - /api/v1/login
+        - /api/v1/refresh
+        - /api/v1/auth/**
+        - /api/v1/identity/register
+        - /api/v1/identity/login
+        - /api/v1/identity/refresh
+        - /api/v1/identity/auth/**
+        - /api/v1/authorize
+        - /api/v1/token
 
   security:
     max-request-size: 10485760
@@ -153,17 +107,11 @@ gateway:
     allow-credentials: true
 
   routes:
-    orchestra:
-      enabled: true
-      path: /api/v1/**
-      uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
-      strip-prefix: 0
-      plugins:
-        - audit
     custody:
       enabled: true
       path: /api/v1/custody/**
       uri: ${CUSTODY_BASE_URL:http://bridge-custody-api:8081}
+      order: 1
       strip-prefix: 0
       plugins:
         - audit
@@ -171,32 +119,89 @@ gateway:
     identity:
       enabled: true
       path: /api/v1/identity/**
-      uri: ${IDENTITY_BASE_URL:http://bridge-id:8080}
+      uri: ${IDENTITY_BASE_URL:http://bridge-id:8083}
+      order: 2
       strip-prefix: 0
       plugins:
         - audit
     licensing:
       enabled: true
       path: /api/v1/licensing/**
-      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8080}
+      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8082}
+      order: 3
       strip-prefix: 0
       plugins:
         - audit
-    brokerage:
-      enabled: ${BROKERAGE_ENABLED:false}
-      path: /api/v1/brokerage/**
-      uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
-      strip-prefix: 0
-      plugins:
-        - audit
-        - monetization
-    wallet:
+    # brokerage: uncomment when bridge-brokerage service is deployed
+    #   enabled: ${BROKERAGE_ENABLED:false}
+    #   path: /api/v1/brokerage/**
+    #   uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
+    #   order: 4
+    #   strip-prefix: 0
+    #   plugins:
+    #     - audit
+    #     - monetization
+    # wallet: uncomment when bridge-wallet service is deployed
+    #   enabled: true
+    #   path: /api/v1/wallet/**
+    #   uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+    #   order: 5
+    #   strip-prefix: 0
+    #   plugins:
+    #     - audit
+    portfolio:
       enabled: true
-      path: /api/v1/wallet/**
-      uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+      path: /v1/portfolio/**,/v1/transactions/**,/v1/prices/**
+      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8080}
+      order: 10
       strip-prefix: 0
       plugins:
         - audit
+    execution:
+      enabled: true
+      path: /v1/orders/**
+      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8080}
+      order: 11
+      strip-prefix: 0
+      plugins:
+        - audit
+    marketdata:
+      enabled: true
+      path: /v1/market/**
+      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8080}
+      order: 12
+      strip-prefix: 0
+      plugins:
+        - audit
+    ledger:
+      enabled: true
+      path: /v1/accounts/**,/v1/postings/**,/v1/holds/**
+      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8080}
+      order: 13
+      strip-prefix: 0
+      plugins:
+        - audit
+    orchestra:
+      enabled: true
+      path: /api/v1/**
+      uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
+      order: 100
+      strip-prefix: 0
+      plugins:
+        - audit
+
+  rate-limit:
+    # Default rate limit applied to routes with rate-limit enabled
+    default-requests-per-second: 10.0
+    default-burst-capacity: 20
+    # Per-route overrides (route id -> config)
+    routes:
+      custody:
+        requests-per-second: 10.0
+        burst-capacity: 20
+      orchestra:
+        requests-per-second: 10.0
+        burst-capacity: 20
 
   plugins:
     configs:
@@ -248,10 +253,20 @@ resilience4j:
         base-config: default
       licensing:
         base-config: default
-      brokerage:
+      # brokerage: uncomment when bridge-brokerage service is deployed
+      #   base-config: default
+      #   failure-rate-threshold: 40
+      #   wait-duration-in-open-state: 45s
+      portfolio:
         base-config: default
-        failure-rate-threshold: 40
-        wait-duration-in-open-state: 45s
+      execution:
+        base-config: default
+      marketdata:
+        base-config: default
+      ledger:
+        base-config: default
+      # wallet: uncomment when bridge-wallet service is deployed
+      #   base-config: default
   timelimiter:
     configs:
       default:

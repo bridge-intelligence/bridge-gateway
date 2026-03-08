@@ -1,5 +1,6 @@
 package digital.binari.bridge.gateway.config
 
+import digital.binari.bridge.gateway.filter.RateLimitGatewayFilterFactory
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -13,7 +14,8 @@ import org.springframework.http.HttpMethod
 
 @ConfigurationProperties(prefix = "gateway")
 data class GatewayRoutesProperties(
-    val routes: Map<String, RouteDefinition> = emptyMap()
+    val routes: Map<String, RouteDefinition> = emptyMap(),
+    val rateLimit: RateLimitProperties = RateLimitProperties()
 )
 
 data class RouteDefinition(
@@ -21,14 +23,27 @@ data class RouteDefinition(
     val path: String = "",
     val uri: String = "",
     val stripPrefix: Int = 0,
+    val order: Int = 0,
     val methods: List<String> = emptyList(),
     val plugins: List<String> = emptyList()
+)
+
+data class RateLimitProperties(
+    val defaultRequestsPerSecond: Double = 10.0,
+    val defaultBurstCapacity: Int = 20,
+    val routes: Map<String, RateLimitRouteConfig> = emptyMap()
+)
+
+data class RateLimitRouteConfig(
+    val requestsPerSecond: Double = 10.0,
+    val burstCapacity: Int = 20
 )
 
 @Configuration
 @EnableConfigurationProperties(GatewayRoutesProperties::class)
 class GatewayRoutesConfig(
-    private val routesProperties: GatewayRoutesProperties
+    private val routesProperties: GatewayRoutesProperties,
+    private val rateLimitFilterFactory: RateLimitGatewayFilterFactory
 ) {
 
     private val logger = LoggerFactory.getLogger(GatewayRoutesConfig::class.java)
@@ -37,7 +52,8 @@ class GatewayRoutesConfig(
     fun customRouteLocator(builder: RouteLocatorBuilder): RouteLocator {
         val routeBuilder = builder.routes()
 
-        routesProperties.routes.forEach { (routeId, definition) ->
+        // Sort routes by order so specific paths (lower order) register before catch-all
+        routesProperties.routes.entries.sortedBy { it.value.order }.forEach { (routeId, definition) ->
             if (!definition.enabled) {
                 logger.info("Route '{}' is disabled, skipping registration", routeId)
                 return@forEach
@@ -49,13 +65,13 @@ class GatewayRoutesConfig(
             }
 
             logger.info(
-                "Registering route '{}': path={}, uri={}, stripPrefix={}, methods={}, plugins={}",
-                routeId, definition.path, definition.uri, definition.stripPrefix,
+                "Registering route '{}': path={}, uri={}, order={}, stripPrefix={}, methods={}, plugins={}",
+                routeId, definition.path, definition.order, definition.uri, definition.stripPrefix,
                 definition.methods, definition.plugins
             )
 
             routeBuilder.route(routeId) { predicateSpec ->
-                var predicate = predicateSpec.path(definition.path)
+                var predicate = predicateSpec.order(definition.order).path(definition.path)
 
                 if (definition.methods.isNotEmpty()) {
                     val httpMethods = definition.methods.map { HttpMethod.valueOf(it.uppercase()) }
@@ -68,6 +84,21 @@ class GatewayRoutesConfig(
                         filterSpec.stripPrefix(definition.stripPrefix)
                     }
                     filterSpec.addRequestHeader("X-Gateway-Route", routeId)
+
+                    // S-10: Apply RateLimit filter to routes configured in gateway.rate-limit.routes
+                    val rateLimitConfig = routesProperties.rateLimit.routes[routeId]
+                    if (rateLimitConfig != null) {
+                        val config = RateLimitGatewayFilterFactory.Config().apply {
+                            requestsPerSecond = rateLimitConfig.requestsPerSecond
+                            burstCapacity = rateLimitConfig.burstCapacity
+                        }
+                        filterSpec.filter(rateLimitFilterFactory.apply(config))
+                        logger.info(
+                            "Applied RateLimit filter to route '{}': {}req/s, burst={}",
+                            routeId, rateLimitConfig.requestsPerSecond, rateLimitConfig.burstCapacity
+                        )
+                    }
+
                     filterSpec
                 }.uri(definition.uri)
             }
