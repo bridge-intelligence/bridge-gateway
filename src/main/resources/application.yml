@@ -128,7 +128,7 @@ gateway:
     licensing:
       enabled: true
       path: /api/v1/licensing/**
-      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8086}
+      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8087}
       order: 3
       strip-prefix: 0
       plugins:
@@ -155,7 +155,7 @@ gateway:
     portfolio:
       enabled: true
       path: /api/v1/portfolio/**,/api/v1/transactions/**,/api/v1/prices/**
-      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8085}
+      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8080}
       order: 10
       strip-prefix: 1
       plugins:
@@ -163,7 +163,7 @@ gateway:
     execution:
       enabled: true
       path: /api/v1/orders/**
-      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8083}
+      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8080}
       order: 11
       strip-prefix: 1
       plugins:
@@ -171,7 +171,7 @@ gateway:
     marketdata:
       enabled: true
       path: /api/v1/market/**
-      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8084}
+      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8080}
       order: 12
       strip-prefix: 1
       plugins:
@@ -179,7 +179,7 @@ gateway:
     ledger:
       enabled: true
       path: /api/v1/accounts/**,/api/v1/postings/**,/api/v1/holds/**
-      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8082}
+      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8080}
       order: 13
       strip-prefix: 1
       plugins:
