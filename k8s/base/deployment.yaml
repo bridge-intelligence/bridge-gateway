@@ -28,6 +28,8 @@ spec:
           {{- end }}
     spec:
       serviceAccountName: bridge-gateway
+      imagePullSecrets:
+        - name: harbor-pull-gateway
       containers:
         - name: bridge-gateway
           image: harbor.binari.digital/bridge-gateway/bridge-gateway:dev-latest
