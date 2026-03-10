@@ -57,7 +57,7 @@ jobs:
           url: ${{ env.VAULT_ADDR }}
           method: jwt
           role: github-bridge-gateway-dev
-          jwtGithubAudience: https://github.com/binaridigital
+          jwtGithubAudience: https://github.com/bridge-intelligence
           secrets: |
             kv/cicd/harbor/bridge-gateway/data/harbor-registry username | HARBOR_USERNAME ;
             kv/cicd/harbor/bridge-gateway/data/harbor-registry password | HARBOR_PASSWORD ;
