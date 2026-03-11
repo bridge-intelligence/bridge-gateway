@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bridge-gateway
+  labels:
+    app: bridge-gateway
+    component: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bridge-gateway
+      component: gateway
+  template:
+    metadata:
+      labels:
+        app: bridge-gateway
+        component: gateway
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "bridge-gateway-dev"
+        vault.hashicorp.com/agent-inject-secret-config: ""
+        vault.hashicorp.com/agent-inject-template-config: |
+          {{- with secret "secret/data/bridge/dev/gateway" -}}
+          export GATEWAY_API_KEYS="{{ .Data.data.gateway_api_keys }}"
+          export REDIS_PASSWORD="{{ .Data.data.redis_password }}"
+          {{- end }}
+    spec:
+      serviceAccountName: bridge-gateway
+      imagePullSecrets:
+        - name: harbor-pull-gateway
+      containers:
+        - name: bridge-gateway
+          image: harbor.binari.digital/bridge-gateway/bridge-gateway:dev-latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ -f /vault/secrets/config ]; then
+                source /vault/secrets/config
+              fi
+              exec java -jar /app/app.jar
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev"
+            - name: VAULT_ENABLED
+              value: "false"
+          envFrom:
+            - configMapRef:
+                name: bridge-gateway-config
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 4000
+            initialDelaySeconds: 45
+            periodSeconds: 15
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30

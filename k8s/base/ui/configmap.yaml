@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bridge-gateway-ui-config
+  labels:
+    app: bridge-gateway-ui
+data:
+  GATEWAY_API_URL: "https://api.gateway.service.d.bridgeintelligence.ltd"
+  BRIDGE_ID_API_URL: "https://api.id.service.d.bridgeintelligence.ltd"

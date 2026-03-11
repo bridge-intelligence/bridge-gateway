@@ -1,31 +1,90 @@
-# Dependencies
+# ========================
+# Bridge Gateway .gitignore
+# ========================
+
+# --- Java / Kotlin / Gradle ---
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+*.class
+*.jar
+!gradle/wrapper/*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# --- Dependencies ---
 node_modules/
 vendor/
 __pycache__/
 *.pyc
+
+# --- Environment / Secrets ---
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!env/*.example
+*.pem
+*.key
+*.p12
+*.jks
+*.pkcs12
+*.keystore
+*.truststore
+secrets/
+*-secret.yaml
+*-secret.yml
+kubeconfig*
+*service-account*.json
+.vault-token
+vault-token
+*.token
 
-# Build
-dist/
-build/
-*.exe
-*.dll
-*.so
-*.dylib
-
-# IDE
+# --- IDE ---
 .idea/
 .vscode/
 *.swp
 *.swo
+*.iml
+*.ipr
+*.iws
+out/
+.project
+.classpath
+.settings/
 
-# OS
+# --- OS ---
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Secrets
-*.pem
-*.key
-secrets/
+# --- Build artifacts ---
+dist/
+target/
+*.exe
+*.dll
+*.so
+*.dylib
+*.sqlite*
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Temporary ---
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# --- Cloud / Infra ---
+.aws/
+.gcp/
+terraform.tfstate*
+.terraform/
+
+# --- Plan files (session-specific) ---
+PLAN.md

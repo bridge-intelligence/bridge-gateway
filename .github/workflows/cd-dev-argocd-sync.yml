@@ -1,0 +1,126 @@
+name: CD — Dev ArgoCD Sync
+
+on:
+  workflow_run:
+    workflows: ["CD — Dev"]
+    types: [completed]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  VAULT_ADDR:    ${{ secrets.VAULT_ADDR }}
+  ARGOCD_SERVER: https://argocd.binari.digital
+  APP_NAMESPACE: argocd
+
+jobs:
+  sync-dev:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev') }}
+    name: Sync ArgoCD app(s) for dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Normalize Vault address
+        run: |
+          ADDR="${{ secrets.VAULT_ADDR }}"
+          if [ -z "$ADDR" ]; then
+            ADDR="${{ vars.VAULT_ADDR }}"
+          fi
+          if [ -z "$ADDR" ]; then
+            echo "::error::Missing VAULT_ADDR. Set repository secret or variable VAULT_ADDR."
+            exit 1
+          fi
+          ADDR="${ADDR%/}"
+          [[ "$ADDR" =~ ^https?:// ]] || ADDR="https://$ADDR"
+          echo "VAULT_ADDR=$ADDR" >> $GITHUB_ENV
+
+      - name: Authenticate with Vault (JWT)
+        id: vault-argocd
+        uses: hashicorp/vault-action@v3.4.0
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          method: jwt
+          role: github-bridge-gateway-dev
+          jwtGithubAudience: https://github.com/bridge-intelligence
+          secrets: |
+            secret/data/cicd/github/bridge-gateway/data/argocd token | ARGOCD_TOKEN ;
+
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd-linux-amd64
+          sudo mv argocd-linux-amd64 /usr/local/bin/argocd
+
+      - name: Check Argo CD reachability
+        run: |
+          echo "Checking connectivity to ${{ env.ARGOCD_SERVER }}..."
+          curl -sI --connect-timeout 10 "${{ env.ARGOCD_SERVER }}" || true
+
+      - name: Login and sync apps
+        env:
+          ARGOCD_TOKEN: ${{ steps.vault-argocd.outputs.ARGOCD_TOKEN }}
+        run: |
+          if [ -z "${ARGOCD_TOKEN}" ]; then
+            echo "::error::Missing Argo CD token. Set key 'token' in Vault at secret/cicd/github/bridge-gateway/data/argocd"
+            exit 1
+          fi
+
+          for i in 1 2 3; do
+            echo "Argo CD login attempt $i/3..."
+            if argocd login ${{ env.ARGOCD_SERVER }} --auth-token "$ARGOCD_TOKEN" --insecure --grpc-web; then
+              break
+            fi
+            if [ "$i" -eq 3 ]; then
+              echo "::error::Argo CD login failed after 3 attempts"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          argocd proj get bridge-ecosystem --grpc-web >/dev/null 2>&1 || {
+            echo "ArgoCD project bridge-ecosystem not found."
+            exit 1
+          }
+
+          REPO="https://github.com/bridge-intelligence/bridge-gateway.git"
+          DEST="https://kubernetes.default.svc"
+          NS="bridge-service-stack"
+
+          # --- API app ---
+          APP_API="bridge-gateway-api-dev"
+          argocd app get "$APP_API" --grpc-web >/dev/null 2>&1 || \
+            argocd app create "$APP_API" --grpc-web \
+              --project bridge-ecosystem \
+              --repo "$REPO" \
+              --path k8s/overlays/dev/api \
+              --revision dev \
+              --dest-server "$DEST" \
+              --dest-namespace "$NS" \
+              --sync-policy automated \
+              --self-heal \
+              --auto-prune
+
+          argocd app sync "$APP_API" --grpc-web
+          argocd app wait "$APP_API" --health --timeout 300 --grpc-web || true
+
+          # --- UI app ---
+          APP_UI="bridge-gateway-ui-dev"
+          argocd app get "$APP_UI" --grpc-web >/dev/null 2>&1 || \
+            argocd app create "$APP_UI" --grpc-web \
+              --project bridge-ecosystem \
+              --repo "$REPO" \
+              --path k8s/overlays/dev/ui \
+              --revision dev \
+              --dest-server "$DEST" \
+              --dest-namespace "$NS" \
+              --sync-policy automated \
+              --self-heal \
+              --auto-prune
+
+          argocd app sync "$APP_UI" --grpc-web
+          argocd app wait "$APP_UI" --health --timeout 300 --grpc-web || true

@@ -1,0 +1,289 @@
+server:
+  port: 4000
+
+spring:
+  application:
+    name: bridge-gateway
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.vault.config.VaultAutoConfiguration
+      - org.springframework.cloud.vault.config.VaultReactiveAutoConfiguration
+      - org.springframework.cloud.vault.config.VaultObservationAutoConfiguration
+  data:
+    redis:
+      host: ${REDIS_HOST:bridge-redis-master.bridge-service-stack.svc.cluster.local}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "https://orchestrator.binari.digital"
+              - "http://localhost:3000"
+              - "http://localhost:5173"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      # ── IMPORTANT: Route registration uses ONLY the custom gateway.routes section below ──
+      # ── (via GatewayRoutesConfig programmatic RouteLocator). Do NOT add spring.cloud.gateway.routes ──
+      # ── here to avoid dual registration. CircuitBreaker/Retry/RateLimit filters are applied ──
+      # ── programmatically in GatewayRoutesConfig. ──
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway,prometheus
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      sla:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s,5s
+
+# Gateway custom config
+gateway:
+  auth:
+    api-keys: ${GATEWAY_API_KEYS:}
+    header-name: X-API-Key
+    jwt:
+      enabled: ${JWT_AUTH_ENABLED:true}
+      jwks-url: ${BRIDGE_ID_JWKS_URL:http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks}
+      issuer: ${BRIDGE_ID_JWT_ISSUER:http://bridge-id:8083}
+      cache-refresh-seconds: 300
+      public-paths:
+        - /actuator/**
+        - /fallback/**
+        - /.well-known/**
+        - /jwks
+        - /api/v1/register
+        - /api/v1/login
+        - /api/v1/refresh
+        - /api/v1/auth/**
+        - /api/v1/identity/register
+        - /api/v1/identity/login
+        - /api/v1/identity/refresh
+        - /api/v1/identity/auth/**
+        - /api/v1/authorize
+        - /api/v1/token
+
+  security:
+    max-request-size: 10485760
+    allowed-ip-ranges: []
+
+  cors:
+    allowed-origins:
+      - "https://orchestrator.binari.digital"
+      - "https://orchestra.service.d.bridgeintelligence.ltd"
+      - "https://custody.service.d.bridgeintelligence.ltd"
+      - "https://id.service.d.bridgeintelligence.ltd"
+      - "https://dlt.service.d.bridgeintelligence.ltd"
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+      - "http://localhost:5174"
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+      - OPTIONS
+    allowed-headers:
+      - "*"
+    allow-credentials: true
+
+  routes:
+    # ── Services that natively use /api/v1/* (no path rewrite needed) ──
+    custody:
+      enabled: true
+      path: /api/v1/custody/**
+      uri: ${CUSTODY_BASE_URL:http://bridge-custody-api:8081}
+      order: 1
+      strip-prefix: 0
+      plugins:
+        - audit
+        - compliance
+    identity:
+      enabled: true
+      path: /api/v1/identity/**
+      uri: ${IDENTITY_BASE_URL:http://bridge-id:8083}
+      order: 2
+      strip-prefix: 0
+      plugins:
+        - audit
+    licensing:
+      enabled: true
+      path: /api/v1/licensing/**
+      uri: ${LICENSING_BASE_URL:http://bridge-licensing:8087}
+      order: 3
+      strip-prefix: 0
+      plugins:
+        - audit
+    brokerage:
+      enabled: ${BROKERAGE_ENABLED:false}
+      path: /api/v1/brokerage/**
+      uri: ${BROKERAGE_BASE_URL:http://bridge-brokerage:8080}
+      order: 4
+      strip-prefix: 0
+      plugins:
+        - audit
+        - monetization
+    wallet:
+      enabled: true
+      path: /api/v1/wallet/**
+      uri: ${WALLET_BASE_URL:http://bridge-wallet:3000}
+      order: 5
+      strip-prefix: 0
+      plugins:
+        - audit
+
+    # ── Business services: exposed at /api/v1/*, strip /api → forward /v1/* ──
+    portfolio:
+      enabled: true
+      path: /api/v1/portfolio/**,/api/v1/transactions/**,/api/v1/prices/**
+      uri: ${PORTFOLIO_BASE_URL:http://bridge-portfolio-service:8080}
+      order: 10
+      strip-prefix: 1
+      plugins:
+        - audit
+    execution:
+      enabled: true
+      path: /api/v1/orders/**
+      uri: ${EXECUTION_BASE_URL:http://bridge-execution-service:8080}
+      order: 11
+      strip-prefix: 1
+      plugins:
+        - audit
+    marketdata:
+      enabled: true
+      path: /api/v1/market/**
+      uri: ${MARKETDATA_BASE_URL:http://bridge-marketdata-service:8080}
+      order: 12
+      strip-prefix: 1
+      plugins:
+        - audit
+    ledger:
+      enabled: true
+      path: /api/v1/accounts/**,/api/v1/postings/**,/api/v1/holds/**
+      uri: ${LEDGER_BASE_URL:http://bridge-ledger-service:8080}
+      order: 13
+      strip-prefix: 1
+      plugins:
+        - audit
+    recon:
+      enabled: ${RECON_ENABLED:false}
+      path: /api/v1/recon/**
+      uri: ${RECON_BASE_URL:http://bridge-recon-service:8087}
+      order: 14
+      strip-prefix: 1
+      plugins:
+        - audit
+
+    # ── Orchestra catch-all (lowest priority) ──
+    orchestra:
+      enabled: true
+      path: /api/v1/**
+      uri: ${ORCHESTRA_BASE_URL:http://bridge-orchestra-api:8080}
+      order: 100
+      strip-prefix: 0
+      plugins:
+        - audit
+
+  rate-limit:
+    # Default rate limit applied to routes with rate-limit enabled
+    default-requests-per-second: 10.0
+    default-burst-capacity: 20
+    # Per-route overrides (route id -> config)
+    routes:
+      custody:
+        requests-per-second: 10.0
+        burst-capacity: 20
+      orchestra:
+        requests-per-second: 10.0
+        burst-capacity: 20
+
+  plugins:
+    configs:
+      audit:
+        enabled: true
+        order: 10
+        settings:
+          kafka-topic: gateway.audit.events
+          log-headers: true
+          log-body: false
+      monetization:
+        enabled: false
+        order: 100
+        settings:
+          billing-service-url: ${BILLING_SERVICE_URL:http://billing-service:8080}
+          free-tier-limit: 1000
+      compliance:
+        enabled: false
+        order: 50
+        settings:
+          orbit-url: ${ORBIT_GATEWAY_URL:http://orbit-gateway:3001}
+          timeout-ms: 5000
+
+logging:
+  level:
+    root: INFO
+    digital.binari.bridge.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    console: "%d{ISO8601} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 5
+    instances:
+      orchestra:
+        base-config: default
+      custody:
+        base-config: default
+        failure-rate-threshold: 30
+        wait-duration-in-open-state: 60s
+      identity:
+        base-config: default
+      licensing:
+        base-config: default
+      # brokerage: uncomment when bridge-brokerage service is deployed
+      #   base-config: default
+      #   failure-rate-threshold: 40
+      #   wait-duration-in-open-state: 45s
+      portfolio:
+        base-config: default
+      execution:
+        base-config: default
+      marketdata:
+        base-config: default
+      ledger:
+        base-config: default
+      # wallet: uncomment when bridge-wallet service is deployed
+      #   base-config: default
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 10s
+    instances:
+      custody:
+        timeout-duration: 15s

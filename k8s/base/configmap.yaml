@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bridge-gateway-config
+  labels:
+    app: bridge-gateway
+data:
+  SPRING_PROFILES_ACTIVE: "dev"
+  SERVER_PORT: "4000"
+  ORCHESTRA_BASE_URL: "http://bridge-orchestra-api.bridge-service-stack.svc.cluster.local:8080"
+  CUSTODY_BASE_URL: "http://bridge-custody-api.bridge-service-stack.svc.cluster.local:8081"
+  WALLET_BASE_URL: "http://bridge-wallet.bridge-service-stack.svc.cluster.local:8080"
+  PORTFOLIO_BASE_URL: "http://bridge-portfolio-service.bridge-service-stack.svc.cluster.local:8080"
+  EXECUTION_BASE_URL: "http://bridge-execution-service.bridge-service-stack.svc.cluster.local:8080"
+  MARKETDATA_BASE_URL: "http://bridge-marketdata-service.bridge-service-stack.svc.cluster.local:8080"
+  LEDGER_BASE_URL: "http://bridge-ledger-service.bridge-service-stack.svc.cluster.local:8080"
+  REDIS_HOST: "bridge-redis-master.bridge-service-stack.svc.cluster.local"
+  REDIS_PORT: "6379"
+  IDENTITY_BASE_URL: "http://bridge-id.bridge-service-stack.svc.cluster.local:8083"
+  BRIDGE_ID_JWKS_URL: "http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks"
+  BRIDGE_ID_JWT_ISSUER: "http://bridge-id:8083"
+  JWT_AUTH_ENABLED: "true"
+  VAULT_ADDR: "https://vault.binari.digital"
+  VAULT_ENABLED: "false"

@@ -1,0 +1,4 @@
+window.__BRIDGE_RUNTIME_CONFIG__ = {
+  GATEWAY_API_URL: '',
+  BRIDGE_ID_API_URL: '',
+};

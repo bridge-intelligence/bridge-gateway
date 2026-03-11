@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bridge-gateway-ui
+  labels:
+    app: bridge-gateway-ui
+    component: gateway-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bridge-gateway-ui
+  template:
+    metadata:
+      labels:
+        app: bridge-gateway-ui
+        component: gateway-ui
+    spec:
+      containers:
+        - name: bridge-gateway-ui
+          image: bridge-gateway-ui
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            - name: GATEWAY_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: bridge-gateway-ui-config
+                  key: GATEWAY_API_URL
+            - name: BRIDGE_ID_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: bridge-gateway-ui-config
+                  key: BRIDGE_ID_API_URL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bridge-gateway-ui
+  labels:
+    app: bridge-gateway-ui
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: bridge-gateway-ui

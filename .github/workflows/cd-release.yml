@@ -1,0 +1,112 @@
+# Semantic version release workflow.
+# Triggers on merge to main. Bumps version tag and creates a GitHub release.
+# Version flow: dev -> stage (minor bump) -> main (release tag)
+
+name: Release — Tag & Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine bump type
+        id: bump
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-detect from commit messages since last tag
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline)
+
+            if echo "$COMMITS" | grep -qiE "BREAKING|!:"; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif echo "$COMMITS" | grep -qiE "^feat"; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            else
+              echo "type=patch" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Compute new version
+        id: version
+        run: |
+          LATEST_TAG=$(git for-each-ref refs/tags --sort=-version:refname --format='%(refname:short)' --count=1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
+
+          # Strip v prefix
+          VER="${LATEST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VER"
+
+          BUMP="${{ steps.bump.outputs.type }}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=${NEW_TAG}" >> $GITHUB_OUTPUT
+          echo "prev_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Version: ${LATEST_TAG} -> ${NEW_TAG} (${BUMP})"
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.new_tag }}" -m "Release ${{ steps.version.outputs.new_tag }}"
+          git push origin "${{ steps.version.outputs.new_tag }}"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV="${{ steps.version.outputs.prev_tag }}"
+          NEW="${{ steps.version.outputs.new_tag }}"
+
+          if [ "$PREV" = "v0.0.0" ]; then
+            LOG=$(git log --oneline HEAD)
+          else
+            LOG=$(git log ${PREV}..HEAD --oneline)
+          fi
+
+          # Write to file for multiline output
+          echo "## What's Changed" > /tmp/changelog.md
+          echo "" >> /tmp/changelog.md
+          echo "$LOG" | while IFS= read -r line; do
+            echo "- $line" >> /tmp/changelog.md
+          done
+          echo "" >> /tmp/changelog.md
+          echo "**Full Changelog**: ${PREV}...${NEW}" >> /tmp/changelog.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.new_tag }}" \
+            --title "bridge-gateway ${{ steps.version.outputs.new_tag }}" \
+            --notes-file /tmp/changelog.md \
+            --prerelease
