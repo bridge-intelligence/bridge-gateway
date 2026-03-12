@@ -18,7 +18,7 @@ data:
   REDIS_PORT: "6379"
   IDENTITY_BASE_URL: "http://bridge-id.bridge-service-stack.svc.cluster.local:8083"
   BRIDGE_ID_JWKS_URL: "http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks"
-  BRIDGE_ID_JWT_ISSUER: "http://bridge-id:8083"
+  BRIDGE_ID_JWT_ISSUER: "https://id.bridgeintelligence.ltd"
   JWT_AUTH_ENABLED: "true"
   VAULT_ADDR: "https://vault.binari.digital"
   VAULT_ENABLED: "false"
