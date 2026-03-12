@@ -2,6 +2,7 @@ package digital.binari.bridge.gateway.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -31,6 +32,8 @@ class SecurityConfig {
                     .pathMatchers("/api/v1/identity/auth/**").permitAll()
                     .pathMatchers("/api/v1/authorize", "/api/v1/token").permitAll()
                     .pathMatchers("/.well-known/**", "/jwks").permitAll()
+                    // CORS preflight — must be permitted before auth
+                    .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // Admin endpoints require ADMIN role
                     .pathMatchers("/gateway/admin/**").hasRole("ADMIN")
                     // All other exchanges require authentication.

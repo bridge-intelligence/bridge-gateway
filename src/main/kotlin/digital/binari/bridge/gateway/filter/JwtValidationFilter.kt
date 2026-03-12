@@ -41,6 +41,11 @@ class JwtValidationFilter(
             return chain.filter(exchange)
         }
 
+        // Pass OPTIONS requests through — CORS preflight must not be blocked by auth
+        if (exchange.request.method == org.springframework.http.HttpMethod.OPTIONS) {
+            return chain.filter(exchange)
+        }
+
         val path = exchange.request.uri.path
 
         if (isPublicPath(path)) {
