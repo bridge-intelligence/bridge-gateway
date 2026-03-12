@@ -24,6 +24,7 @@ spring:
           '[/**]':
             allowedOrigins:
               - "https://orchestrator.binari.digital"
+              - "https://wallet.service.d.bridgeintelligence.ltd"
               - "http://localhost:3000"
               - "http://localhost:5173"
             allowedMethods: "*"
@@ -92,6 +93,7 @@ gateway:
       - "https://custody.service.d.bridgeintelligence.ltd"
       - "https://id.service.d.bridgeintelligence.ltd"
       - "https://dlt.service.d.bridgeintelligence.ltd"
+      - "https://wallet.service.d.bridgeintelligence.ltd"
       - "http://localhost:3000"
       - "http://localhost:5173"
       - "http://localhost:5174"
