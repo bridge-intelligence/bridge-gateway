@@ -82,6 +82,7 @@ gateway:
         - /api/v1/identity/auth/**
         - /api/v1/authorize
         - /api/v1/token
+        - /webhooks/**
 
   security:
     max-request-size: 10485760
@@ -156,6 +157,25 @@ gateway:
       plugins:
         - audit
 
+    # ── SumSub webhook (no auth, forwarded to bridge-id) ──
+    webhooks:
+      enabled: true
+      path: /webhooks/**
+      uri: ${IDENTITY_BASE_URL:http://bridge-id:8083}
+      order: 6
+      strip-prefix: 0
+      plugins: []
+
+    # ── Oracle service ──
+    oracle:
+      enabled: true
+      path: /api/v1/oracle/**
+      uri: ${ORACLE_BASE_URL:http://bridge-oracle:8080}
+      order: 7
+      strip-prefix: 0
+      plugins:
+        - audit
+
     # ── Business services: exposed at /api/v1/*, strip /api → forward /v1/* ──
     portfolio:
       enabled: true
@@ -220,6 +240,12 @@ gateway:
       orchestra:
         requests-per-second: 10.0
         burst-capacity: 20
+      identity:
+        requests-per-second: 5.0
+        burst-capacity: 10
+      webhooks:
+        requests-per-second: 20.0
+        burst-capacity: 50
 
   plugins:
     configs:
@@ -282,6 +308,8 @@ resilience4j:
       marketdata:
         base-config: default
       ledger:
+        base-config: default
+      oracle:
         base-config: default
       # wallet: uncomment when bridge-wallet service is deployed
       #   base-config: default
