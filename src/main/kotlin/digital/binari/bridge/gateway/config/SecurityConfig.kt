@@ -36,10 +36,10 @@ class SecurityConfig {
                     .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // Admin endpoints require ADMIN role
                     .pathMatchers("/gateway/admin/**").hasRole("ADMIN")
-                    // All other exchanges require authentication.
-                    // Primary auth is enforced by JwtValidationFilter (GlobalFilter)
+                    // All other exchanges are permitted at the Spring Security level.
+                    // Auth is enforced by JwtValidationFilter (GlobalFilter, order=-1)
                     // which runs before routing and returns 401 for unauthenticated requests.
-                    .anyExchange().authenticated()
+                    .anyExchange().permitAll()
             }
             .build()
     }
