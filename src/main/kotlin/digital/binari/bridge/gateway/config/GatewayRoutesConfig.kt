@@ -25,7 +25,8 @@ data class RouteDefinition(
     val stripPrefix: Int = 0,
     val order: Int = 0,
     val methods: List<String> = emptyList(),
-    val plugins: List<String> = emptyList()
+    val plugins: List<String> = emptyList(),
+    val rewritePath: String = ""
 )
 
 data class RateLimitProperties(
@@ -83,7 +84,13 @@ class GatewayRoutesConfig(
                 }
 
                 predicate.filters { filterSpec ->
-                    if (definition.stripPrefix > 0) {
+                    if (definition.rewritePath.isNotBlank()) {
+                        val parts = definition.rewritePath.split(",").map { it.trim() }
+                        if (parts.size == 2) {
+                            filterSpec.rewritePath(parts[0], parts[1])
+                            logger.info("Applied RewritePath to route '{}': {} -> {}", routeId, parts[0], parts[1])
+                        }
+                    } else if (definition.stripPrefix > 0) {
                         filterSpec.stripPrefix(definition.stripPrefix)
                     }
                     filterSpec.addRequestHeader("X-Gateway-Route", routeId)
