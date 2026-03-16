@@ -49,9 +49,11 @@ class PluginChainFilter(
                 if (!result.proceed) {
                     shortCircuit(exchange, result)
                 } else {
-                    chain.filter(exchange).then(
-                        executePostRoutePlugins(exchange, context)
-                    )
+                    chain.filter(exchange).doFinally {
+                        // Fire-and-forget: POST_ROUTE plugins run after response is committed.
+                        // Do NOT chain into response Mono — causes UnsupportedOperationException.
+                        executePostRoutePlugins(exchange, context).subscribe()
+                    }
                 }
             }
     }
