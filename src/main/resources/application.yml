@@ -65,7 +65,7 @@ gateway:
     jwt:
       enabled: ${JWT_AUTH_ENABLED:true}
       jwks-url: ${BRIDGE_ID_JWKS_URL:http://bridge-id.bridge-service-stack.svc.cluster.local:8083/jwks}
-      issuer: ${BRIDGE_ID_JWT_ISSUER:http://bridge-id:8083}
+      issuer: ${BRIDGE_ID_JWT_ISSUER:https://api.id.service.d.bridgeintelligence.ltd}
       cache-refresh-seconds: 300
       public-paths:
         - /actuator/**
