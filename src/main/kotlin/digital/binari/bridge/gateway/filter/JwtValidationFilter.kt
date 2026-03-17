@@ -199,8 +199,8 @@ class JwtValidationFilter(
         // USER role gets wallet and transaction access
         if (roles.any { it.equals("USER", ignoreCase = true) }) {
             expanded.addAll(listOf(
-                "wallet:read", "wallet:create", "wallet:transfer", "wallet:update",
-                "transaction:create", "transaction:read",
+                "wallet:read", "wallet:write", "wallet:create", "wallet:transfer", "wallet:update",
+                "transaction:read", "transaction:write", "transaction:create",
                 "portfolio:read",
                 "workflow:read", "workflow:execute"
             ))
