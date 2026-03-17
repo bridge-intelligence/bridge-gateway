@@ -79,10 +79,15 @@ class JwtValidationFilter(
             if (claims == null) {
                 unauthorized(exchange, "Invalid or expired token")
             } else {
+                // Expand permissions: JWT contains bridge-id permissions,
+                // but downstream services (orchestra) need service-specific permissions.
+                // Map roles to service permissions so wallet users can access wallet endpoints.
+                val expandedPermissions = expandPermissionsForRole(claims.roles, claims.permissions)
+
                 val mutatedRequest = exchange.request.mutate()
                     .header(IDENTITY_HEADER, claims.brdgId)
                     .header(ROLES_HEADER, claims.roles.joinToString(","))
-                    .header(PERMISSIONS_HEADER, claims.permissions.joinToString(","))
+                    .header(PERMISSIONS_HEADER, expandedPermissions.joinToString(","))
                     .header(PLATFORMS_HEADER, claims.platformsJson)
                     .header(AUTH_METHOD_HEADER, claims.method)
                     .build()
@@ -180,6 +185,42 @@ class JwtValidationFilter(
         val body = """{"error":"unauthorized","message":"$message"}"""
         val buffer = exchange.response.bufferFactory().wrap(body.toByteArray())
         return exchange.response.writeWith(Mono.just(buffer))
+    }
+
+    /**
+     * Expand JWT permissions based on roles.
+     * Bridge-ID JWT contains identity-level permissions (identity:read, verification:submit).
+     * Downstream services need service-specific permissions (wallet:read, transaction:create).
+     * This mapping ensures authenticated users can access the services they need.
+     */
+    private fun expandPermissionsForRole(roles: List<String>, jwtPermissions: List<String>): List<String> {
+        val expanded = jwtPermissions.toMutableSet()
+
+        // USER role gets wallet and transaction access
+        if (roles.any { it.equals("USER", ignoreCase = true) }) {
+            expanded.addAll(listOf(
+                "wallet:read", "wallet:create", "wallet:transfer", "wallet:update",
+                "transaction:create", "transaction:read",
+                "portfolio:read",
+                "workflow:read", "workflow:execute"
+            ))
+        }
+
+        // ADMIN role gets everything
+        if (roles.any { it.equals("ADMIN", ignoreCase = true) }) {
+            expanded.add("ADMIN")
+        }
+
+        // DLT_ADMIN gets DLT-specific permissions
+        if (roles.any { it.equals("DLT_ADMIN", ignoreCase = true) }) {
+            expanded.addAll(listOf(
+                "wallet:read", "wallet:create", "wallet:transfer", "wallet:update",
+                "transaction:create", "transaction:read",
+                "workflow:read", "workflow:create", "workflow:update", "workflow:execute"
+            ))
+        }
+
+        return expanded.toList()
     }
 
     data class JwtClaims(
