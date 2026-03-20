@@ -237,21 +237,32 @@ gateway:
         - audit
 
   rate-limit:
-    # Default rate limit applied to routes with rate-limit enabled
+    # Default rate limits (per-minute and per-hour sliding windows via Redis)
+    default-requests-per-minute: ${RATE_LIMIT_DEFAULT_RPM:100}
+    default-requests-per-hour: ${RATE_LIMIT_DEFAULT_RPH:1000}
+    # Legacy defaults (backward compat)
     default-requests-per-second: 10.0
     default-burst-capacity: 20
     # Per-route overrides (route id -> config)
     routes:
       custody:
+        requests-per-minute: 100
+        requests-per-hour: 1000
         requests-per-second: 10.0
         burst-capacity: 20
       orchestra:
+        requests-per-minute: 100
+        requests-per-hour: 1000
         requests-per-second: 10.0
         burst-capacity: 20
       identity:
+        requests-per-minute: 60
+        requests-per-hour: 500
         requests-per-second: 5.0
         burst-capacity: 10
       webhooks:
+        requests-per-minute: 200
+        requests-per-hour: 5000
         requests-per-second: 20.0
         burst-capacity: 50
 
