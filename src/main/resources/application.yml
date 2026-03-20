@@ -25,6 +25,8 @@ spring:
             allowedOrigins:
               - "https://orchestrator.binari.digital"
               - "https://console.service.d.bridgeintelligence.ltd"
+              - "https://console.v2.service.d.bridgeintelligence.ltd"
+              - "https://hq.service.d.bridgeintelligence.ltd"
               - "https://wallet.service.d.bridgeintelligence.ltd"
               - "http://localhost:3000"
               - "http://localhost:5173"
@@ -92,6 +94,8 @@ gateway:
     allowed-origins:
       - "https://orchestrator.binari.digital"
       - "https://console.service.d.bridgeintelligence.ltd"
+      - "https://console.v2.service.d.bridgeintelligence.ltd"
+      - "https://hq.service.d.bridgeintelligence.ltd"
       - "https://orchestra.service.d.bridgeintelligence.ltd"
       - "https://custody.service.d.bridgeintelligence.ltd"
       - "https://id.service.d.bridgeintelligence.ltd"
