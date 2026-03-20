@@ -30,12 +30,16 @@ data class RouteDefinition(
 )
 
 data class RateLimitProperties(
+    val defaultRequestsPerMinute: Long = 100,
+    val defaultRequestsPerHour: Long = 1000,
     val defaultRequestsPerSecond: Double = 10.0,
     val defaultBurstCapacity: Int = 20,
     val routes: Map<String, RateLimitRouteConfig> = emptyMap()
 )
 
 data class RateLimitRouteConfig(
+    val requestsPerMinute: Long = 100,
+    val requestsPerHour: Long = 1000,
     val requestsPerSecond: Double = 10.0,
     val burstCapacity: Int = 20
 )
@@ -95,17 +99,19 @@ class GatewayRoutesConfig(
                     }
                     filterSpec.addRequestHeader("X-Gateway-Route", routeId)
 
-                    // S-10: Apply RateLimit filter to routes configured in gateway.rate-limit.routes
+                    // Apply Redis-backed RateLimit filter to routes configured in gateway.rate-limit.routes
                     val rateLimitConfig = routesProperties.rateLimit.routes[routeId]
                     if (rateLimitConfig != null) {
                         val config = RateLimitGatewayFilterFactory.Config().apply {
+                            requestsPerMinute = rateLimitConfig.requestsPerMinute
+                            requestsPerHour = rateLimitConfig.requestsPerHour
                             requestsPerSecond = rateLimitConfig.requestsPerSecond
                             burstCapacity = rateLimitConfig.burstCapacity
                         }
                         filterSpec.filter(rateLimitFilterFactory.apply(config))
                         logger.info(
-                            "Applied RateLimit filter to route '{}': {}req/s, burst={}",
-                            routeId, rateLimitConfig.requestsPerSecond, rateLimitConfig.burstCapacity
+                            "Applied RateLimit filter to route '{}': {}req/min, {}req/hr",
+                            routeId, rateLimitConfig.requestsPerMinute, rateLimitConfig.requestsPerHour
                         )
                     }
 
