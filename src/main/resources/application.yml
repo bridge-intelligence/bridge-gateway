@@ -236,6 +236,20 @@ gateway:
       plugins:
         - audit
 
+  hmac-signing:
+    enabled: ${HMAC_SIGNING_ENABLED:false}
+    signature-header: X-Bridge-Signature
+    timestamp-header: X-Bridge-Timestamp
+    max-timestamp-age-seconds: 300
+    # Per-tenant webhook secrets (key = tenant ID or "default")
+    tenant-secrets:
+      default: ${HMAC_DEFAULT_SECRET:}
+    # Route IDs where outbound signing is applied (e.g. webhooks to external systems)
+    sign-outbound-routes:
+      - webhooks
+    # Route IDs where inbound signature verification is required
+    verify-inbound-routes: []
+
   rate-limit:
     # Default rate limits (per-minute and per-hour sliding windows via Redis)
     default-requests-per-minute: ${RATE_LIMIT_DEFAULT_RPM:100}
