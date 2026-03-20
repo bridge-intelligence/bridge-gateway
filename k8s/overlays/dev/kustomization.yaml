@@ -26,4 +26,4 @@ patches:
 
 images:
   - name: harbor.binari.digital/bridge-gateway/bridge-gateway
-    newTag: dev-91812fb
+    newTag: dev-323f67a
